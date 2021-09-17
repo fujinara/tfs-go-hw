@@ -30,31 +30,15 @@ var colors = map[int]string {
     8 : "\033[37m", // white
 }
 
-func sandglass(params map[string]int) {
-	fmt.Println(string(colors[params["border_color"]]) + strings.Repeat(string(params["border_char"]), params["size"]))
-    start := 1
-    end := params["size"] - 2
-    for i := params["size"] - 2; i >= 1; i-- {
-        for j := 0; j < params["size"]; j++ {
-            switch {
-            case j == start || j == end:
-                fmt.Print(string(colors[params["border_color"]]) + string(params["border_char"]))
-            case params["is_sand"] != 0 && j > Min(start, end) && j < Max(start, end) && i <= params["sand_level"]:
-                fmt.Print(string(colors[params["sand_color"]]) + string(params["sand_char"]))
-            default:
-                fmt.Print(" ")
-            }
-        }
-        fmt.Print("\n")
-        start++
-        end--
+type Mod func() (string, int)
+
+func change(s string, n int) func() (string, int) {
+    return func() (string, int) {
+        return s, n
     }
-    fmt.Println(string(colors[params["border_color"]]) + strings.Repeat(string(params["border_char"]), params["size"]))
 }
 
-func main() {
-    // первые 4 параметра обязательные; остальные используются, если в "is_sand" указать 1,
-    // иначе их можно не задавать
+func sandglass(params ...Mod) {
     settings := map[string]int{
         "size" : 15,
         "border_char" : '#',
@@ -64,5 +48,34 @@ func main() {
         "sand_level" : 3,   // для sand_level (высота уровня песка) можно указать значения от 0 и выше, но при значениях
         "sand_color" : 4,   // больших, чем size - 2, песок будет просто занимать всё пространство внутри часов
     }
-	sandglass(settings)
+    for _, param := range params {
+        s, n := param()
+        settings[s] = n
+    }
+    fmt.Println(string(colors[settings["border_color"]]) + strings.Repeat(string(settings["border_char"]), settings["size"]))
+    start := 1
+    end := settings["size"] - 2
+    for i := settings["size"] - 2; i >= 1; i-- {
+        for j := 0; j < settings["size"]; j++ {
+            switch {
+            case j == start || j == end:
+                fmt.Print(string(colors[settings["border_color"]]) + string(settings["border_char"]))
+            case settings["is_sand"] != 0 && j > Min(start, end) && j < Max(start, end) && i <= settings["sand_level"]:
+                fmt.Print(string(colors[settings["sand_color"]]) + string(settings["sand_char"]))
+            default:
+                fmt.Print(" ")
+            }
+        }
+        fmt.Print("\n")
+        start++
+        end--
+    }
+    fmt.Println(string(colors[settings["border_color"]]) + strings.Repeat(string(settings["border_char"]), settings["size"]))
+}
+
+func main() {
+    // теперь можно вызывать без параметров (с настройками по умолчанию)
+    sandglass()
+    // либо при вызове изменять некоторые настройки на выбор
+    sandglass(change("size", 17), change("border_color", 7))
 }
