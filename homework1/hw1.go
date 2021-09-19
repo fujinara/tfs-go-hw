@@ -30,61 +30,60 @@ var colors = map[int]string {
     8 : "\033[37m", // white
 }
 
-var settings = map[string]int {
-    "size" : 15,
-    "border_char" : '#',
-    "border_color" : 3,
-    "is_sand" : 1,      // 0 - песка нет, 1 (или любое другое число) - песок есть
-    "sand_char" : '$',
-    "sand_level" : 3,   // для sand_level (высота уровня песка) можно указать значения от 0 и выше, но при значениях
-    "sand_color" : 4,   // больших, чем size - 2, песок будет просто занимать всё пространство внутри часов
-}
-
-func changeSize(n int) func() {
-    return func() {
+func changeSize(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["size"] = n
     }
 }
 
-func changeBorderChar(n int) func() {
-    return func() {
+func changeBorderChar(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["border_char"] = n
     }
 }
 
-func changeBorderColor(n int) func() {
-    return func() {
+func changeBorderColor(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["border_color"] = n
     }
 }
 
-func changeIsSand(n int) func() {
-    return func() {
+func changeIsSand(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["is_sand"] = n
     }
 }
 
-func changeSandChar(n int) func() {
-    return func() {
+func changeSandChar(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["sand_char"] = n
     }
 }
 
-func changeSandLevel(n int) func() {
-    return func() {
+func changeSandLevel(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["sand_level"] = n
     }
 }
 
-func changeSandColor(n int) func() {
-    return func() {
+func changeSandColor(n int) func(map[string]int) {
+    return func(settings map[string]int) {
         settings["sand_color"] = n
     }
 }
 
-func sandglass(params ...func()) {
+func sandglass(params ...func(map[string]int)) {
+    settings := map[string]int {
+        "size" : 15,
+        "border_char" : '#',
+        "border_color" : 3,
+        "is_sand" : 1,      // 0 - песка нет, 1 (или любое другое число) - песок есть
+        "sand_char" : '$',
+        "sand_level" : 3,   // для sand_level (высота уровня песка) можно указать значения от 0 и выше, но при значениях
+        "sand_color" : 4,   // больших, чем size - 2, песок будет просто занимать всё пространство внутри часов
+    }
     for _, param := range params {
-        param()
+        param(settings)
     }
     fmt.Println(string(colors[settings["border_color"]]) + strings.Repeat(string(settings["border_char"]), settings["size"]))
     start := 1
@@ -112,4 +111,6 @@ func main() {
     sandglass()
     // либо вызывывать, изменяя некоторые настройки на выбор
     sandglass(changeSize(11), changeBorderChar('@'))
+    sandglass(changeSandChar('&'), changeSandColor(2), changeSandLevel(2))
+    sandglass(changeBorderColor(7), changeIsSand(0))
 }
