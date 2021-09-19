@@ -30,27 +30,61 @@ var colors = map[int]string {
     8 : "\033[37m", // white
 }
 
-type Mod func() (string, int)
+var settings = map[string]int {
+    "size" : 15,
+    "border_char" : '#',
+    "border_color" : 3,
+    "is_sand" : 1,      // 0 - песка нет, 1 (или любое другое число) - песок есть
+    "sand_char" : '$',
+    "sand_level" : 3,   // для sand_level (высота уровня песка) можно указать значения от 0 и выше, но при значениях
+    "sand_color" : 4,   // больших, чем size - 2, песок будет просто занимать всё пространство внутри часов
+}
 
-func change(s string, n int) func() (string, int) {
-    return func() (string, int) {
-        return s, n
+func changeSize(n int) func() {
+    return func() {
+        settings["size"] = n
     }
 }
 
-func sandglass(params ...Mod) {
-    settings := map[string]int{
-        "size" : 15,
-        "border_char" : '#',
-        "border_color" : 3,
-        "is_sand" : 1,      // 0 - песка нет, 1 (или любое другое число) - песок есть
-        "sand_char" : '$',
-        "sand_level" : 3,   // для sand_level (высота уровня песка) можно указать значения от 0 и выше, но при значениях
-        "sand_color" : 4,   // больших, чем size - 2, песок будет просто занимать всё пространство внутри часов
+func changeBorderChar(n int) func() {
+    return func() {
+        settings["border_char"] = n
     }
+}
+
+func changeBorderColor(n int) func() {
+    return func() {
+        settings["border_color"] = n
+    }
+}
+
+func changeIsSand(n int) func() {
+    return func() {
+        settings["is_sand"] = n
+    }
+}
+
+func changeSandChar(n int) func() {
+    return func() {
+        settings["sand_char"] = n
+    }
+}
+
+func changeSandLevel(n int) func() {
+    return func() {
+        settings["sand_level"] = n
+    }
+}
+
+func changeSandColor(n int) func() {
+    return func() {
+        settings["sand_color"] = n
+    }
+}
+
+func sandglass(params ...func()) {
     for _, param := range params {
-        s, n := param()
-        settings[s] = n
+        param()
     }
     fmt.Println(string(colors[settings["border_color"]]) + strings.Repeat(string(settings["border_char"]), settings["size"]))
     start := 1
@@ -76,6 +110,6 @@ func sandglass(params ...Mod) {
 func main() {
     // теперь можно вызывать без параметров (с настройками по умолчанию)
     sandglass()
-    // либо при вызове изменять некоторые настройки на выбор
-    sandglass(change("size", 17), change("border_color", 7))
+    // либо вызывывать, изменяя некоторые настройки на выбор
+    sandglass(changeSize(11), changeBorderChar('@'))
 }
