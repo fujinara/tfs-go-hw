@@ -13,13 +13,6 @@ import (
 	"time"
 )
 
-func Abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
 type finance struct {
 	Company    string
 	Type       string
@@ -191,9 +184,9 @@ func main() {
 			if op.Valid {
 				outmap[op.Company].ValidOpsCnt += 1
 				if op.Type == "income" || op.Type == "+" {
-					outmap[op.Company].Balance += Abs(op.Value)
+					outmap[op.Company].Balance += op.Value
 				} else {
-					outmap[op.Company].Balance -= Abs(op.Value)
+					outmap[op.Company].Balance -= op.Value
 				}
 			} else {
 				outmap[op.Company].InvalidOps = append(outmap[op.Company].InvalidOps, op.Id)
