@@ -64,7 +64,6 @@ func PricesToCandle(prices <-chan domain.Price, ctx context.Context, wg *sync.Wa
 			}
 		}
 	}()
-
 	return candles1m
 }
 
@@ -137,7 +136,6 @@ func CanldeToCandle(candlesIn <-chan domain.Candle, ctx context.Context, wg *syn
 			}
 		}
 	}()
-
 	return candlesOut
 }
 
