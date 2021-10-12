@@ -28,28 +28,23 @@ func main() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	defer func() {
-		signal.Stop(c)
-		cancel()
-	}()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		select {
-		case <-c:
-			logger.Info("interruption signal is recieved")
-			cancel()
-		case <-ctx.Done():
-		}
+		<-c
+		logger.Info("interruption signal is recieved")
+		cancel()
 	}()
 	
 	prices := pg.Prices(ctx, &wg)
-	candle1mToSave := converter.PricesToCandle(prices, ctx, &wg)
-	candle1m := converter.SaveCandleCSV(candle1mToSave, domain.CandlePeriod1m, ctx, &wg)
-	candle2mToSave := converter.CanldeToCandle(candle1m, ctx, &wg)
-	candle2m := converter.SaveCandleCSV(candle2mToSave, domain.CandlePeriod2m, ctx, &wg)
-	candle10mToSave := converter.CanldeToCandle(candle2m, ctx, &wg)
-	_ = converter.SaveCandleCSV(candle10mToSave, domain.CandlePeriod10m, ctx, &wg)
-
+	candle1mToSave := converter.PricesToCandle(prices, &wg)
+	candle1m := converter.SaveCandleCSV(candle1mToSave, domain.CandlePeriod1m, &wg)
+	candle2mToSave := converter.CanldeToCandle(candle1m, &wg)
+	candle2m := converter.SaveCandleCSV(candle2mToSave, domain.CandlePeriod2m, &wg)
+	candle10mToSave := converter.CanldeToCandle(candle2m, &wg)
+	candles10m := converter.SaveCandleCSV(candle10mToSave, domain.CandlePeriod10m, &wg)
+	for _ = range candles10m {}
+	
 	wg.Wait()
 }
