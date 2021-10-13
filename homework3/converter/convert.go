@@ -15,11 +15,16 @@ type CurrState map[string]*domain.Candle
 
 func PricesToCandle(prices <-chan domain.Price, wg *sync.WaitGroup) <-chan domain.Candle {
 	candles1m := make(chan domain.Candle)
+	curr := make(CurrState)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer close(candles1m)
-		curr := make(CurrState)
+		defer func() {
+			for _, elem := range curr {
+				candles1m <- *elem
+			}
+			close(candles1m)
+		}()
 		for entry := range prices {
 			if _, ok := curr[entry.Ticker]; ok {
 				curr[entry.Ticker].High = math.Max(curr[entry.Ticker].High, entry.Value)
@@ -63,11 +68,16 @@ func PricesToCandle(prices <-chan domain.Price, wg *sync.WaitGroup) <-chan domai
 
 func CanldeToCandle(candlesIn <-chan domain.Candle, wg *sync.WaitGroup) <-chan domain.Candle {
 	candlesOut := make(chan domain.Candle)
+	curr := make(CurrState)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer close(candlesOut)
-		curr := make(CurrState)
+		defer func() {
+			for _, elem := range curr {
+				candlesOut <- *elem
+			}
+			close(candlesOut)
+		}()
 		for cand := range candlesIn {
 			if _, ok := curr[cand.Ticker]; ok {
 				curr[cand.Ticker].High = math.Max(curr[cand.Ticker].High, cand.High)

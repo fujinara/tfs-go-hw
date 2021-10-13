@@ -29,9 +29,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		<-c
 		logger.Info("interruption signal is recieved")
 		cancel()
@@ -45,6 +43,6 @@ func main() {
 	candle10mToSave := converter.CanldeToCandle(candle2m, &wg)
 	candles10m := converter.SaveCandleCSV(candle10mToSave, domain.CandlePeriod10m, &wg)
 	for _ = range candles10m {}
-	
+
 	wg.Wait()
 }
