@@ -8,7 +8,7 @@ on:
       - main
       - development
       - devhw3
-      - devhw3
+      - devhw4
   pull_request:
 jobs:
   golangci:
