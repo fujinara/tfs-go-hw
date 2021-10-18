@@ -12,39 +12,41 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-const userID string = "ID"
+type idType string
+
+const userID idType = "ID"
 
 type MessgBody struct {
 	Message string `json:"message"`
 }
 
 type MessgFrom struct {
-	ID   string
+	ID   idType
 	Text string
 }
 
 type MessgList struct {
-	ID   string
+	ID       idType
 	Messages []string
 }
 
 var jwtKey = []byte("some_key")
 
-var Users = map[string]string{}
+var Users = map[idType]string{}
 
 type Credentials struct {
-	Username string `json:"username"`
+	Username idType `json:"username"`
 	Password string `json:"password"`
 }
 
 type Claims struct {
-	Username string `json:"username"`
+	Username idType `json:"username"`
 	jwt.StandardClaims
 }
 
 type FromTo struct {
-	Sender    string
-	Recipient string
+	Sender    idType
+	Recipient idType
 }
 
 var PrivateMessages = map[FromTo][]string{}
@@ -55,7 +57,7 @@ func main() {
 	root := chi.NewRouter()
 	root.Use(middleware.Logger)
 	root.Post("/users/register", Register)
-	root.Post("/users/signin", SingIn)
+	root.Post("/users/signin", SignIn)
 
 	r := chi.NewRouter()
 	r.Use(Auth)
@@ -70,17 +72,21 @@ func main() {
 }
 
 func GetMessages(w http.ResponseWriter, r *http.Request) {
-	_, ok := r.Context().Value(userID).(string)
+	_, ok := r.Context().Value(userID).(idType)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(GroupMessages)
+	err := json.NewEncoder(w).Encode(GroupMessages)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func GetPrivateMessages(w http.ResponseWriter, r *http.Request) {
-	id, ok := r.Context().Value(userID).(string)
+	id, ok := r.Context().Value(userID).(idType)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -92,11 +98,15 @@ func GetPrivateMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(MyMessages)
+	err := json.NewEncoder(w).Encode(MyMessages)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func PostMessages(w http.ResponseWriter, r *http.Request) {
-	id, ok := r.Context().Value(userID).(string)
+	id, ok := r.Context().Value(userID).(idType)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -120,8 +130,8 @@ func PostMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostPrivateMessages(w http.ResponseWriter, r *http.Request) {
-	recip := chi.URLParam(r, "id")
-	id, ok := r.Context().Value(userID).(string)
+	recip := idType(chi.URLParam(r, "id"))
+	id, ok := r.Context().Value(userID).(idType)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -142,12 +152,7 @@ func PostPrivateMessages(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	if _, ok := PrivateMessages[FromTo{Sender : id, Recipient : recip}]; ok {
-		PrivateMessages[FromTo{Sender : id, Recipient : recip}] = append(PrivateMessages[FromTo{Sender : id, Recipient : recip}], m.Message)
-	} else {
-		PrivateMessages[FromTo{Sender : id, Recipient : recip}] = []string{m.Message}
-	}
+	PrivateMessages[FromTo{Sender: id, Recipient: idType(recip)}] = append(PrivateMessages[FromTo{Sender: id, Recipient: idType(recip)}], m.Message)
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
@@ -158,14 +163,22 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, ok := Users[creds.Username]; ok {
-		w.Write([]byte("Username " + creds.Username + " is already occupied"))
+		_, err := w.Write([]byte("Username " + creds.Username + " is already occupied"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	} else {
 		Users[creds.Username] = creds.Password
-		w.Write([]byte("User " + creds.Username + " is successfully registered!"))
+		_, err := w.Write([]byte("User " + creds.Username + " is successfully registered!"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
-func SingIn(w http.ResponseWriter, r *http.Request) {
+func SignIn(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
