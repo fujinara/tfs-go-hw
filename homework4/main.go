@@ -152,7 +152,7 @@ func PostPrivateMessages(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	PrivateMessages[FromTo{Sender: id, Recipient: idType(recip)}] = append(PrivateMessages[FromTo{Sender: id, Recipient: idType(recip)}], m.Message)
+	PrivateMessages[FromTo{Sender: id, Recipient: recip}] = append(PrivateMessages[FromTo{Sender: id, Recipient: recip}], m.Message)
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
