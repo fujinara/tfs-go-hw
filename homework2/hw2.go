@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,14 +12,17 @@ import (
 	"time"
 )
 
-type finance struct {
-	Company    string
-	Type       string
-	Value      int
-	Id         interface{}
-	Created_at time.Time
-	Valid      bool
-	Omit       bool
+type OpType struct {
+	Type       interface{} `json:"type,omitempty"`
+	Value      interface{} `json:"value,omitempty"`
+	Id         interface{} `json:"id,omitempty"`
+	Created_at interface{} `json:"created_at,omitempty"`
+}
+
+type inpformat struct {
+	Company   string `json:"company,omitempty"`
+	Operation OpType `json:"operation,omitempty"`
+	OpType
 }
 
 type outformat struct {
@@ -28,6 +30,45 @@ type outformat struct {
 	ValidOpsCnt int           `json:"valid_operations_count"`
 	Balance     int           `json:"balance"`
 	InvalidOps  []interface{} `json:"invalid_operations,omitempty"`
+}
+
+const layout = "2006-01-02T15:04:05Z07:00"
+
+func (tr *inpformat) IsCorrect() bool {
+	_, oks := tr.Id.(string)
+	floatVal, oki := tr.Id.(float64)
+	timeStr, oktime := tr.Created_at.(string)
+	_, err := time.Parse(layout, timeStr)
+	if tr.Company == "" || tr.Id == nil || (!oks && (!oki || floatVal != float64(int64(floatVal)))) || err != nil || !oktime {
+		return false
+	}
+	return true
+}
+
+func (tr *inpformat) IsValid() bool {
+	verdict := false
+	if tr.Value != nil {
+		if fval, ok := tr.Value.(float64); ok {
+			if fval == float64(int64(fval)) {
+				verdict = true
+			}
+		}
+		if sval, ok := tr.Value.(string); ok {
+			s, err := strconv.ParseFloat(sval, 64)
+			if err == nil {
+				if s == float64(int64(s)) {
+					verdict = true
+				}
+			}
+		}
+	}
+	if tr.Type != nil {
+		typeStr, ok := tr.Type.(string)
+		if verdict && ok && (typeStr == "income" || typeStr == "outcome" || typeStr == "+" || typeStr == "-") {
+			verdict = true
+		}
+	}
+	return verdict
 }
 
 func getPath() string {
@@ -42,107 +83,6 @@ func getPath() string {
 		}
 	}
 	return *FilePathFlag
-}
-
-func (d *finance) UnmarshalJSON(data []byte) error {
-	var v map[string]interface{}
-	err := json.Unmarshal(data, &v)
-
-	if err != nil {
-		return err
-	}
-
-	d.Omit = false
-
-	if v["company"] != nil {
-		d.Company, _ = v["company"].(string)
-	}
-
-	var ops map[string]interface{}
-	var kk bool
-
-	if v["operation"] != nil {
-		ops, kk = v["operation"].(map[string]interface{})
-		if !kk {
-			return errors.New("operation field cannot be parsed as map[string]interface{}")
-		}
-	}
-
-	if v["type"] != nil {
-		if typee, ok := v["type"].(string); ok {
-			d.Type = typee
-		}
-	} else if v["operation"] != nil && ops["type"] != nil {
-		if typee, ok := ops["type"].(string); ok {
-			d.Type = typee
-		}
-	}
-
-	if v["id"] != nil {
-		d.Id = v["id"]
-	} else if v["operation"] != nil && ops["id"] != nil {
-		d.Id = ops["id"]
-	}
-
-	layout := "2006-01-02T15:04:05Z07:00"
-
-	var createdErr error
-
-	if v["created_at"] != nil {
-		d.Created_at, createdErr = time.Parse(layout, v["created_at"].(string))
-		if createdErr != nil {
-			d.Omit = true
-		}
-	} else if v["operation"] != nil && ops["created_at"] != nil {
-		d.Created_at, createdErr = time.Parse(layout, ops["created_at"].(string))
-		if createdErr != nil {
-			d.Omit = true
-		}
-	}
-
-	if v["value"] != nil {
-		if fval, ok := v["value"].(float64); ok {
-			if fval == float64(int64(fval)) {
-				d.Value = int(fval)
-			}
-		}
-		if sval, ok := v["value"].(string); ok {
-			s, err := strconv.ParseFloat(sval, 64)
-			if err == nil {
-				if s == float64(int64(s)) {
-					d.Value = int(s)
-				}
-			}
-		}
-
-	} else if v["operation"] != nil && ops["value"] != nil {
-		fval, ok := ops["value"].(float64)
-		if ok {
-			d.Value = int(fval)
-		}
-		sval, ok := ops["value"].(string)
-		if ok {
-			s, err := strconv.ParseFloat(sval, 64)
-			if err == nil {
-				d.Value = int(s)
-			}
-		}
-	}
-
-	d.Valid = false
-
-	if d.Value != 0 && (d.Type == "income" || d.Type == "outcome" || d.Type == "+" || d.Type == "-") {
-		d.Valid = true
-	}
-
-	_, oks := d.Id.(string)
-	flv, oki := d.Id.(float64)
-
-	if d.Company == "" || (!oks && (!oki || flv != float64(int64(flv)))) || d.Created_at.IsZero() {
-		d.Omit = true
-	}
-
-	return nil
 }
 
 func main() {
@@ -161,32 +101,68 @@ func main() {
 		}
 	}
 
-	var finList []finance
+	var finList []inpformat
 	unmarshErr := json.Unmarshal(data, &finList)
 	if unmarshErr != nil {
 		fmt.Println(unmarshErr)
 	}
 
-	sort.Slice(finList, func(i, j int) bool {
-		return finList[i].Created_at.Before(finList[j].Created_at)
-	})
-
-	var outmap = map[string]*outformat{}
-
-	for _, op := range finList {
-		if !op.Omit {
-			outmap[op.Company] = &outformat{Company: op.Company, InvalidOps: make([]interface{}, 0)}
+	for i := range finList {
+		if finList[i].Operation != (OpType{}) {
+			if finList[i].Operation.Type != nil {
+				finList[i].Type = finList[i].Operation.Type
+			}
+			if finList[i].Operation.Value != nil {
+				finList[i].Value = finList[i].Operation.Value
+			}
+			if finList[i].Operation.Id != nil {
+				finList[i].Id = finList[i].Operation.Id
+			}
+			if finList[i].Operation.Created_at != nil {
+				finList[i].Created_at = finList[i].Operation.Created_at
+			}
 		}
 	}
 
+	var outmap = map[string]*outformat{}
+	var CorrectFinList = []inpformat{}
+
 	for _, op := range finList {
-		if !op.Omit {
-			if op.Valid {
+		if op.IsCorrect() {
+			outmap[op.Company] = &outformat{Company: op.Company, InvalidOps: make([]interface{}, 0)}
+			CorrectFinList = append(CorrectFinList, op)
+		}
+	}
+
+	sort.Slice(CorrectFinList, func(i, j int) bool {
+		creatTimeI, _ := time.Parse(layout, CorrectFinList[i].Created_at.(string))
+		creatTimeJ, _ := time.Parse(layout, CorrectFinList[j].Created_at.(string))
+		return creatTimeI.Before(creatTimeJ)
+	})
+
+	for _, op := range CorrectFinList {
+		if op.IsCorrect() {
+			if op.IsValid() {
 				outmap[op.Company].ValidOpsCnt += 1
-				if op.Type == "income" || op.Type == "+" {
-					outmap[op.Company].Balance += op.Value
+				typeStr := fmt.Sprintf("%v", op.Type)
+				var valueInt int
+				if fval, ok := op.Value.(float64); ok {
+					if fval == float64(int64(fval)) {
+						valueInt = int(fval)
+					}
+				}
+				if sval, ok := op.Value.(string); ok {
+					s, err := strconv.ParseFloat(sval, 64)
+					if err == nil {
+						if s == float64(int64(s)) {
+							valueInt = int(s)
+						}
+					}
+				}
+				if typeStr == "income" || typeStr == "+" {
+					outmap[op.Company].Balance += valueInt
 				} else {
-					outmap[op.Company].Balance -= op.Value
+					outmap[op.Company].Balance -= valueInt
 				}
 			} else {
 				outmap[op.Company].InvalidOps = append(outmap[op.Company].InvalidOps, op.Id)
