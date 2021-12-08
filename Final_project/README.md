@@ -1,6 +1,6 @@
-### Бот для торговли на криптовалютной бирже [kraken-demo](https://demo-futures.kraken.com/futures/PI_XBTUSD)
+## Бот для торговли на криптовалютной бирже [kraken-demo](https://demo-futures.kraken.com/futures/PI_XBTUSD)
 
-## Запуск и управление
+### Запуск и управление
 
 * Для запуска бота нужно скомпилировать файл main.go в папке bot командой `go build main.go`, а затем произвести запуск бинарника, задав ключи для работы с биржей и с телеграм ботом в виде переменных окружения. Например:
 `KRAKEN_API_KEY=my_api_key KRAKEN_SECRET=my_private_key TELEGRAM_APITOKEN=my_telegram_apitoken ./main`
