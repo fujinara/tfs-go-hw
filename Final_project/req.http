@@ -1,0 +1,20 @@
+POST http://localhost:5000/sendorder
+Content-Type: application/json
+
+{
+    "side" : "buy",
+    "ticker" : "pi_xbtusd",
+    "size" : 2,
+    "price" : 55000
+}
+
+###
+
+POST http://localhost:5000/strategy
+Content-Type: application/json
+
+{
+    "ticker" : "pi_xbtusd",
+    "size" : 2,
+    "percentage" : 0.1
+}
